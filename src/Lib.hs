@@ -1,6 +1,7 @@
 module Lib where
 
-import Text.ParserCombinators.Parsec hiding (spaces)
+import Text.ParserCombinators.Parsec hiding (spaces, parse)
+import qualified Text.ParserCombinators.Parsec as P
 
 import Numeric
 import Control.Monad
@@ -15,18 +16,17 @@ spaces = skipMany1 space
 
 data LispVal = Atom String
              | List [LispVal]
-             | DottedList [LispVal] 
+             | DottedList [LispVal]  LispVal
              | Number Integer
              | Float Float
              | Character Char
              | String String
              | Bool Bool
-             deriving Show
-
-
+             | Vector [LispVal]
+             deriving (Show, Eq)
 
 parseChar :: Parser LispVal
-parseChar = string "#\\" >>
+parseChar = try (string "#\\") >>
     Character <$> (try characterName <|> character)
     where 
         characterName = (string "newline" >> return '\n') 
@@ -98,7 +98,47 @@ parseNumber = Number <$>
                 where 
                     ff a '0' = 2 * a
                     ff a '1' = 2 * a + 1
+
+parseSeq :: Parser [LispVal]
+parseSeq = sepBy parseExpr spaces
                 
+parseList :: Parser LispVal
+parseList = List <$> parseSeq
+
+parseDottedList :: Parser LispVal
+parseDottedList = DottedList
+    <$> endBy parseExpr spaces
+    <*> (char '.' >> spaces >> parseExpr)
+    
+parseQuoted :: Parser LispVal
+parseQuoted = List <$> do
+    char '\''
+    x <- parseExpr
+    return [Atom "quote", x]
+
+parseQuasiQuoted :: Parser LispVal
+parseQuasiQuoted = List <$> do
+    char '`'
+    x <- parseExpr 
+    return [Atom "quasiquote", x]
+
+
+parseUnquoted :: Parser LispVal
+parseUnquoted = List <$> do
+    char ','
+    x <- parseExpr 
+    return [Atom "unquoted", x]
+
+parseUnquoteSplicing :: Parser LispVal
+parseUnquoteSplicing = List <$> do
+    char ','
+    x <- parseExpr 
+    return [Atom "unquote-splicing", x]
+
+
+parseVector :: Parser LispVal
+parseVector =  try (string "#(") *> (Vector <$> parseSeq) <* char ')'
+
                 
 parseExpr :: Parser LispVal
 parseExpr = choice 
@@ -107,13 +147,21 @@ parseExpr = choice
     , try parseFloat
     , parseNumber 
     , parseChar 
+    , parseVector
     , parseBool
+    , parseQuoted
+    , parseQuasiQuoted 
+    , parseUnquoted 
+    , parseUnquoteSplicing
+    , char '(' *> (try parseList <|> parseDottedList) <* char ')'
     ]
 
 readExpr :: String -> String
-readExpr input = case parse parseExpr "lisp" input of
+readExpr input = case parse input of
     Left err -> "No match: " ++ show err
     Right val -> "Found value " ++ show val 
 
+parse :: String -> Either ParseError LispVal
+parse = P.parse parseExpr "lisp"
 
 
