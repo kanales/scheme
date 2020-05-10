@@ -1,11 +1,10 @@
 module Main where
 
 import System.Environment
-import Lib
+import Scheme.Eval
+import Scheme
 
 main :: IO ()
 main = do
-    (expr:_) <- getArgs
-    putStrLn (readExpr expr)
-
-
+    args <- getArgs 
+    mapM_ (print . eval . readExpr) args

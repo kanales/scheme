@@ -1,12 +1,13 @@
 import Test.HUnit
 import Data.Monoid
-import Lib
 
+import Scheme.Tree
+import Scheme.Parser
 
 testVector :: Test
 testVector = 
     let
-        l =  Right (Vector [Number 1, Number 2])
+        l =  Right (Vector [Number 1, Number 2, Number 3])
         r = parse "#(1 2 3)"
      in TestCase $ assertEqual "Should return Right vector" l r
 

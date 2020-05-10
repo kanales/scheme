@@ -1,4 +1,4 @@
-module Lib where
+module Scheme.Parser (parse) where
 
 import Text.ParserCombinators.Parsec hiding (spaces, parse)
 import qualified Text.ParserCombinators.Parsec as P
@@ -7,24 +7,14 @@ import Numeric
 import Control.Monad
 import System.Environment
 
+import Scheme.Tree
+
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
 
 spaces :: Parser ()
 spaces = skipMany1 space
-
-data LispVal = Atom String
-             | List [LispVal]
-             | DottedList [LispVal]  LispVal
-             | Number Integer
-             | Float Float
-             | Character Char
-             | String String
-             | Bool Bool
-             | Vector [LispVal]
-             deriving (Show, Eq)
-
 parseChar :: Parser LispVal
 parseChar = try (string "#\\") >>
     Character <$> (try characterName <|> character)
